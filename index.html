@@ -8,7 +8,6 @@
     body {
       padding: 24px;
       height: 100vh;
-
       display: grid;
       grid-template-columns: minmax(256px, 512px);
       place-content: center;
@@ -30,6 +29,10 @@
       align-items: center;
       gap: 12px;
     }
+    img {
+      aspect-ratio: 4/3;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
@@ -40,6 +43,8 @@
   <input type="text" id="emojiInput" placeholder="Type an emoji">
   <label for="speedInput">Animation Speed</label>
   <input type="range" id="speedInput" min="1" max="10" step="1">
+  <label for="backgroundInput">Upload Background Image</label>
+  <input type="file" id="backgroundInput" accept="image/*">
   <br><br>
   <button id="generateBtn">Generate GIF</button>
   <br><br>
@@ -53,6 +58,7 @@
       const text = document.getElementById('textInput').value;
       const emoji = document.getElementById('emojiInput').value;
       const speedInput = document.getElementById('speedInput').value;
+      const backgroundInput = document.getElementById('backgroundInput').files[0];
 
       if (!text || !emoji) {
         alert('Please enter both text and emoji!');
@@ -61,74 +67,104 @@
 
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      canvas.width = 500;
-      canvas.height = 200;
+      canvas.width = 640; // 4:3 aspect ratio
+      canvas.height = 480;
 
       // Animation speed ranges from 500ms (slow) to 50ms (fast)
       const delay = 500 - (speedInput - 1) * 50;
 
-      // Improved GIF settings with higher quality
       const gif = new GIF({
-        workers: 2, 
-        quality: 1, // High quality to retain colors
+        workers: 2,
+        quality: 1,
         width: canvas.width,
         height: canvas.height,
         workerScript: '/animgif/gif.worker.js'
       });
 
-      // Create frames for the animation
-      for (let i = 0; i <= text.length + 2; i++) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
-        ctx.fillStyle = '#fff'; // White background
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const addFrames = (backgroundImage) => {
+        for (let i = 0; i <= text.length + 2; i++) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Text and emoji style
-        ctx.font = '32px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#000'; // Black text color
+          if (backgroundImage) {
+            // Stretch background image to span the full width of the canvas
+            const imgRatio = backgroundImage.width / backgroundImage.height;
+            const canvasRatio = canvas.width / canvas.height;
+            let imgWidth = canvas.width;
+            let imgHeight = imgWidth / imgRatio;
 
-        // Add shadow for better emoji visibility
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-        ctx.shadowBlur = 2;
+            if (imgHeight < canvas.height) {
+              imgHeight = canvas.height;
+              imgWidth = imgHeight * imgRatio;
+            }
 
-        let frameText = '';
-        if (i === 0) {
-          frameText = `${emoji}`;
-        } else if (i === 1) {
-          frameText = `${emoji}${emoji}`;
-        } else if (i > 1 && i <= text.length + 1) {
-          const partialText = text.substring(0, i - 1);
-          frameText = `${emoji} ${partialText} ${emoji}`;
-        } else {
-          frameText = `${emoji} ${text} ${emoji}`;
+            const xOffset = (canvas.width - imgWidth) / 2;
+            const yOffset = (canvas.height - imgHeight) / 2;
+
+            ctx.drawImage(backgroundImage, xOffset, yOffset, imgWidth, imgHeight);
+          } else {
+            // Default white background
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
+
+          ctx.font = '48px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#fff';
+
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+          ctx.shadowBlur = 2;
+
+          let frameText = '';
+          if (i === 0) {
+            frameText = `${emoji}`;
+          } else if (i === 1) {
+            frameText = `${emoji}${emoji}`;
+          } else if (i > 1 && i <= text.length + 1) {
+            const partialText = text.substring(0, i - 1);
+            frameText = `${emoji} ${partialText} ${emoji}`;
+          } else {
+            frameText = `${emoji} ${text} ${emoji}`;
+          }
+
+          ctx.fillText(frameText, canvas.width / 2, canvas.height / 2);
+
+          gif.addFrame(ctx, { copy: true, delay: delay });
         }
 
-        // Draw frame text
-        ctx.fillText(frameText, canvas.width / 2, canvas.height / 2);
+        gif.on('finished', (blob) => {
+          const outputDiv = document.getElementById('output');
+          outputDiv.innerHTML = '';
 
-        // Add frame to GIF
-        gif.addFrame(ctx, { copy: true, delay: delay });
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(blob);
+          outputDiv.appendChild(img);
+
+          const downloadLink = document.createElement('a');
+          downloadLink.href = img.src;
+          downloadLink.download = 'text-emoji.gif';
+          downloadLink.innerText = 'Download GIF';
+          outputDiv.appendChild(downloadLink);
+        });
+
+        gif.render();
+      };
+
+      if (backgroundInput) {
+        const backgroundImage = new Image();
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+          backgroundImage.src = e.target.result;
+          backgroundImage.onload = () => {
+            addFrames(backgroundImage);
+          };
+        };
+
+        reader.readAsDataURL(backgroundInput);
+      } else {
+        addFrames(null);
       }
-
-      // Render the GIF
-      gif.on('finished', (blob) => {
-        const outputDiv = document.getElementById('output');
-        outputDiv.innerHTML = ''; // Clear previous output
-
-        const img = document.createElement('img');
-        img.src = URL.createObjectURL(blob);
-        outputDiv.appendChild(img);
-
-        // Add download button
-        const downloadLink = document.createElement('a');
-        downloadLink.href = img.src;
-        downloadLink.download = 'text-emoji.gif';
-        downloadLink.innerText = 'Download GIF';
-        outputDiv.appendChild(downloadLink);
-      });
-
-      gif.render();
     });
   </script>
 </body>

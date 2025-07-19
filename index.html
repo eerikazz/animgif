@@ -120,9 +120,30 @@
     <div class="container" style="flex: 1;">
       <div class="wrapper" style="flex: 1;">
         <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="1f1f1f"><path d="M610-760q-21 0-35.5-14.5T560-810q0-21 14.5-35.5T610-860q21 0 35.5 14.5T660-810q0 21-14.5 35.5T610-760Zm0 660q-21 0-35.5-14.5T560-150q0-21 14.5-35.5T610-200q21 0 35.5 14.5T660-150q0 21-14.5 35.5T610-100Zm160-520q-21 0-35.5-14.5T720-670q0-21 14.5-35.5T770-720q21 0 35.5 14.5T820-670q0 21-14.5 35.5T770-620Zm0 380q-21 0-35.5-14.5T720-290q0-21 14.5-35.5T770-340q21 0 35.5 14.5T820-290q0 21-14.5 35.5T770-240Zm60-190q-21 0-35.5-14.5T780-480q0-21 14.5-35.5T830-530q21 0 35.5 14.5T880-480q0 21-14.5 35.5T830-430ZM80-480q0-157 104.5-270T441-878q16-2 27.5 9.5T480-840q0 16-10.5 28T443-798q-121 14-202 104t-81 214q0 125 81 214.5T443-162q16 2 26.5 14t10.5 28q0 17-11.5 28.5T441-82Q288-97 184-210T80-480Zm400 80q-33 0-56.5-23.5T400-480q0-5 .5-10.5T403-501l-55-55q-11-11-11-28t11-28q11-11 28-11t28 11l55 55q4-1 21-3 33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Z"/></svg>
-        <label for="speedInput">Animation Speed</label>
+        <label for="speedInput">Animation Speed (<span id="speedValue">5</span>)</label>
       </div>
-      <input style="flex: 1;" type="range" id="speedInput" min="1" max="10" step="1">
+      <input style="flex: 1;" type="range" id="speedInput" min="1" max="10" step="1" value="5">
+    </div>
+
+    <div class="container" style="flex: 1;">
+      <div class="wrapper" style="flex: 1;">
+        <label for="fontSizeInput">Font Size (<span id="fontSizeValue">48px</span>)</label>
+      </div>
+      <input style="flex: 1;" type="range" id="fontSizeInput" min="24" max="96" step="1" value="48">
+    </div>
+
+    <div class="container" style="flex: 1;">
+      <div class="wrapper" style="flex: 1;">
+        <label for="textColorInput">Text Color</label>
+      </div>
+      <input style="flex: 1;" type="color" id="textColorInput" value="#ffffff">
+    </div>
+
+    <div class="container" style="flex: 1;">
+      <div class="wrapper" style="flex: 1;">
+        <label for="bgColorInput">Background Color</label>
+      </div>
+      <input style="flex: 1;" type="color" id="bgColorInput" value="#000000">
     </div>
 
     <div class="container" style="flex: 1;">
@@ -138,120 +159,6 @@
   <!-- GIF.js Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
 
-  <script>
-    document.getElementById('generateBtn').addEventListener('click', () => {
-      const text = document.getElementById('textInput').value;
-      const emoji = document.getElementById('emojiInput').value;
-      const speedInput = document.getElementById('speedInput').value;
-      const backgroundInput = document.getElementById('backgroundInput').files[0];
-
-      if (!text || !emoji) {
-        alert('Please enter both text and emoji!');
-        return;
-      }
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = 640; // 4:3 aspect ratio
-      canvas.height = 480;
-
-      // Animation speed ranges from 500ms (slow) to 50ms (fast)
-      const delay = 500 - (speedInput - 1) * 50;
-
-      const gif = new GIF({
-        workers: 2,
-        quality: 1,
-        width: canvas.width,
-        height: canvas.height,
-        workerScript: '/animgif/gif.worker.js'
-        // workerScript: '/static/js/gif.worker.js'
-      });
-
-      const addFrames = (backgroundImage) => {
-        for (let i = 0; i <= text.length + 2; i++) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-          if (backgroundImage) {
-            // Stretch background image to span the full width of the canvas
-            const imgRatio = backgroundImage.width / backgroundImage.height;
-            const canvasRatio = canvas.width / canvas.height;
-            let imgWidth = canvas.width;
-            let imgHeight = imgWidth / imgRatio;
-
-            if (imgHeight < canvas.height) {
-              imgHeight = canvas.height;
-              imgWidth = imgHeight * imgRatio;
-            }
-
-            const xOffset = (canvas.width - imgWidth) / 2;
-            const yOffset = (canvas.height - imgHeight) / 2;
-
-            ctx.drawImage(backgroundImage, xOffset, yOffset, imgWidth, imgHeight);
-          } else {
-            // Default white background
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-          }
-
-          ctx.font = '48px Arial';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillStyle = '#fff';
-
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-          ctx.shadowBlur = 2;
-
-          let frameText = '';
-          if (i === 0) {
-            frameText = `${emoji}`;
-          } else if (i === 1) {
-            frameText = `${emoji}${emoji}`;
-          } else if (i > 1 && i <= text.length + 1) {
-            const partialText = text.substring(0, i - 1);
-            frameText = `${emoji} ${partialText} ${emoji}`;
-          } else {
-            frameText = `${emoji} ${text} ${emoji}`;
-          }
-
-          ctx.fillText(frameText, canvas.width / 2, canvas.height / 2);
-
-          gif.addFrame(ctx, { copy: true, delay: delay });
-        }
-
-        gif.on('finished', (blob) => {
-          const outputDiv = document.getElementById('output');
-          outputDiv.innerHTML = '';
-
-          const img = document.createElement('img');
-          img.src = URL.createObjectURL(blob);
-          outputDiv.appendChild(img);
-
-          const downloadLink = document.createElement('a');
-          downloadLink.href = img.src;
-          downloadLink.download = 'text-emoji.gif';
-          downloadLink.innerText = 'Download GIF';
-          outputDiv.appendChild(downloadLink);
-        });
-
-        gif.render();
-      };
-
-      if (backgroundInput) {
-        const backgroundImage = new Image();
-        const reader = new FileReader();
-
-        reader.onload = (e) => {
-          backgroundImage.src = e.target.result;
-          backgroundImage.onload = () => {
-            addFrames(backgroundImage);
-          };
-        };
-
-        reader.readAsDataURL(backgroundInput);
-      } else {
-        addFrames(null);
-      }
-    });
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
